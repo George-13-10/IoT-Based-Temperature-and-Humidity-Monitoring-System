@@ -1,18 +1,35 @@
-
-# Code
-
-```cpp
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <ThingSpeak.h>
-
-#define DHTPIN D4
-#define DHTTYPE DHT11
-
-const char* ssid = "George";
-const char* password = "12345678";
-
-void setup(){
- Serial.begin(115200);
+#define DHTPIN D4 // GPIO2
+#define DHTTYPE DHT11 // Change to DHT22 if using that sensor
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* apiKey = "YOUR_THINGSPEAK_WRITE_API_KEY";
+unsigned long channelID = YOUR_CHANNEL_ID;
+WiFiClient client;
+DHT dht(DHTPIN, DHTTYPE);
+void setup() {
+Serial.begin(115200);
+dht.begin();
+WiFi.begin(ssid, password);
+ThingSpeak.begin(client);
+Serial.print("Connecting to Wi-Fi");
+while (WiFi.status() != WL_CONNECTED) {
+delay(500); Serial.print(".");
 }
-```
+Serial.println(" Connected!");
+}
+void loop() {
+float h = dht.readHumidity();
+float t = dht.readTemperature();
+if (isnan(h) || isnan(t)) {
+Serial.println("Sensor read failed!"); return;
+}
+Serial.printf("Temp: %.1f C Humidity: %.1f %%\n", t, h);
+ThingSpeak.setField(1, t);
+ThingSpeak.setField(2, h);
+int code = ThingSpeak.writeFields(channelID, apiKey);
+Serial.println(code == 200 ? "Sent OK" : "Send failed: " + String(code));
+delay(10000); // ThingSpeak free tier: min 15s; 10s is fine for testing
+}
